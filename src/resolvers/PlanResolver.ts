@@ -1,6 +1,7 @@
 import { Resolver, Query, Ctx, Arg, Int, Mutation } from "type-graphql";
 import { Plan } from "../entities/Plan";
 import { MyContext } from "src/types";
+import { emit } from "cluster";
 
 // @InputType()
 // class PlanInputType {
@@ -72,5 +73,39 @@ export class PlanResolver {
     const newPlan = em.create(Plan, { destination, numberOfDay})
     await em.persistAndFlush(newPlan)
     return newPlan
+  }
+
+  @Mutation(() => Plan, { nullable: true })
+  async updatePlan(
+    @Arg('plan_id', () => Int ) plan_id: number,
+    @Arg('destination', () => String, { nullable: true }) destination: string,
+    @Arg('numberOfDay', () => Int, { nullable: true }) numberOfDay: number,
+    @Ctx() { em }: MyContext,
+  ): Promise<Plan | null> {
+    const plan = await em.findOne(Plan, { plan_id })
+    if(!plan) {
+      return null
+    }
+    plan.destination = destination || plan.destination
+    plan.numberOfDay = numberOfDay || plan.numberOfDay
+    await em.persistAndFlush(plan)
+    return plan
+  }
+
+  @Mutation(() => Boolean)
+  async deletePlan(
+    @Arg('plan_id', () => Int) plan_id: number,
+    @Ctx() { em }: MyContext,
+  ): Promise<boolean> {
+    const plan = await em.findOne(Plan, { plan_id})
+    if (!plan) {
+      return false
+    }
+    try {
+      await em.nativeDelete(Plan, { plan_id})
+    } catch {
+      return false
+    }
+    return true
   }
 }
