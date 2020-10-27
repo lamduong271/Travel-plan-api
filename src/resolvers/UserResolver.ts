@@ -1,4 +1,4 @@
-import { Query, Resolver, Mutation, Arg, InputType, Field, Ctx } from "type-graphql"
+import { Query, Resolver, Mutation, Arg, InputType, Field, Ctx, ObjectType } from "type-graphql"
 import { MyContext } from "src/types"
 import argon2 from 'argon2'
 import { User } from "../entities/User"
@@ -16,7 +16,33 @@ class UsernamePasswordInput {
 
   @Field()
   password: string
+}
 
+@InputType()
+class LoginInput {
+  @Field()
+  username: string
+
+  @Field()
+  password: string
+}
+
+@ObjectType()
+class FieldError {
+  @Field()
+  field: string
+
+  @Field()
+  message: string
+}
+
+@ObjectType()
+class UserResponse {
+  @Field(()=> [FieldError], { nullable: true })
+  error?: FieldError[]
+
+  @Field(() => User, { nullable: true })
+  user?: User
 }
 
 @Resolver()
@@ -40,5 +66,34 @@ export class UserResolver {
     })
     await em.persistAndFlush(newUser)
     return newUser
+  }
+
+  @Mutation(() => UserResponse)
+  async login(
+    @Arg('data', () => LoginInput ) data: LoginInput,
+    @Ctx() { em }: MyContext
+  ) {
+    const loginUser = await em.findOne(User, { username: data.username })
+    if (!loginUser) {
+      return {
+        errors: [{
+          field: 'username',
+          message: 'not exist'
+        }]
+      }
+    }
+    const validPassword = await argon2.verify(loginUser.password, data.password)
+    if (!validPassword) {
+      return {
+        errors: {
+          field: "password",
+          message: "incorrect password"
+        }
+      }
+    }
+
+    return {
+      user: loginUser
+    }
   }
 }
