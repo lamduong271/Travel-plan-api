@@ -7,13 +7,14 @@ import { HelloWorldResolver } from "./resolvers/HelloWorldResolver";
 import { PlanResolver } from "./resolvers/PlanResolver";
 import { MikroORM } from '@mikro-orm/core'
 import { ___prod___ } from "./constant";
-import { Plan } from "./entities/Plan";
+// import { Plan } from "./entities/Plan";
 import microConfig from './mikro-orm.config'
+import { UserResolver } from "./resolvers/UserResolver";
 
   const main = async () => {
     const orm = await MikroORM.init(microConfig);
     await orm.getMigrator().up()
-    const plan = orm.em.create(Plan, { destination: 'Espoo', numberOfDay: 2})
+    // const plan = orm.em.create(Plan, { destination: 'Espoo', numberOfDay: 2})
     // // insert plan to database
     // await orm.em.persistAndFlush(plan)
     // const plans = await orm.em.find(Plan, {})
@@ -29,7 +30,7 @@ import microConfig from './mikro-orm.config'
 
     const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [PlanResolver, HelloWorldResolver ],
+      resolvers: [PlanResolver, HelloWorldResolver, UserResolver ],
       validate: true
     }),
     context: ({ em: orm.em })

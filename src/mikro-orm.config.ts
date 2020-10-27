@@ -2,12 +2,14 @@ import { ___prod___ } from "./constant";
 import { Plan } from "./entities/Plan";
 import { MikroORM } from '@mikro-orm/core'
 import path from 'path'
+import { User } from "./entities/User";
+
 export default {
   migrations: {
     path: path.join(__dirname, './migrations'), // path to the folder with migrations
     pattern: /^[\w-]+\d+\.[tj]s$/,
   },
-  entities: [Plan],
+  entities: [Plan, User],
   user: 'lamduong271',
   password: 'lamduong271',
   dbName: 'travel_plan_database',
