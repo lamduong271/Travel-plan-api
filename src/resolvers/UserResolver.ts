@@ -1,99 +1,159 @@
-import { Query, Resolver, Mutation, Arg, InputType, Field, Ctx, ObjectType } from "type-graphql"
-import { MyContext } from "src/types"
-import argon2 from 'argon2'
-import { User } from "../entities/User"
+import {
+  Query,
+  Resolver,
+  Mutation,
+  Arg,
+  InputType,
+  Field,
+  Ctx,
+  ObjectType
+} from "type-graphql";
+import { MyContext } from "src/types";
+import argon2 from "argon2";
+import { User } from "../entities/User";
 
 @InputType()
 class UsernamePasswordInput {
-  @Field({nullable: true, defaultValue: ''})
-  firstName?: string
+  @Field({ nullable: true, defaultValue: "" })
+  firstName?: string;
 
-  @Field({nullable: true,  defaultValue: ''})
-  lastName?: string
-
-  @Field()
-  username: string
+  @Field({ nullable: true, defaultValue: "" })
+  lastName?: string;
 
   @Field()
-  password: string
+  username: string;
+
+  @Field()
+  password: string;
 }
 
 @InputType()
 class LoginInput {
   @Field()
-  username: string
+  username: string;
 
   @Field()
-  password: string
+  password: string;
 }
 
 @ObjectType()
 class FieldError {
   @Field()
-  field: string
+  field: string;
 
   @Field()
-  message: string
+  message: string;
 }
 
 @ObjectType()
 class UserResponse {
-  @Field(()=> [FieldError], { nullable: true })
-  error?: FieldError[]
+  @Field(() => [FieldError], { nullable: true })
+  error?: FieldError[];
 
   @Field(() => User, { nullable: true })
-  user?: User
+  user?: User;
 }
 
 @Resolver()
 export class UserResolver {
   @Query(() => String)
   hello() {
-    return "hi!"
+    return "hi!";
   }
 
-  @Mutation(() => User)
+  @Mutation(() => UserResponse)
   async registerUser(
-    @Arg('data', () => UsernamePasswordInput ) data: UsernamePasswordInput,
+    @Arg("data", () => UsernamePasswordInput) data: UsernamePasswordInput,
     @Ctx() { em }: MyContext
-  ) {
-    const hashedPassword = await argon2.hash(data.password)
+  ): Promise<UserResponse> {
+    // const existUser = await em.findOne(User, { username: data.username })
+    // if(existUser) {
+    //   return {
+    //     error: [{
+    //       field: 'username',
+    //       message: 'username already exist'
+    //     }]
+    //   }
+    // }
+    if (data.username.length <= 2) {
+      return {
+        error: [
+          {
+            field: "username",
+            message: "length must be more than 2"
+          }
+        ]
+      };
+    }
+    if (data.password.length <= 2) {
+      return {
+        error: [
+          {
+            field: "password",
+            message: "length must be more than 2"
+          }
+        ]
+      };
+    }
+    const hashedPassword = await argon2.hash(data.password);
     const newUser = em.create(User, {
       username: data.username,
       password: hashedPassword,
       firstName: data.firstName,
-      lastName: data.lastName,
-    })
-    await em.persistAndFlush(newUser)
-    return newUser
+      lastName: data.lastName
+    });
+    try {
+      await em.persistAndFlush(newUser);
+    } catch (err) {
+      if (err.code === "23505") {
+        return {
+          error: [
+            {
+              field: "username",
+              message: "username already exist"
+            }
+          ]
+        };
+      }
+    }
+    return {
+      user: newUser
+    };
   }
 
   @Mutation(() => UserResponse)
   async login(
-    @Arg('data', () => LoginInput ) data: LoginInput,
+    @Arg("data", () => LoginInput) data: LoginInput,
     @Ctx() { em }: MyContext
   ) {
-    const loginUser = await em.findOne(User, { username: data.username })
+    const loginUser = await em.findOne(User, { username: data.username });
     if (!loginUser) {
       return {
-        errors: [{
-          field: 'username',
-          message: 'not exist'
-        }]
-      }
+        error: [
+          {
+            field: "username",
+            message: "not exist"
+          }
+        ]
+      };
     }
-    const validPassword = await argon2.verify(loginUser.password, data.password)
+    const validPassword = await argon2.verify(
+      loginUser.password,
+      data.password
+    );
     if (!validPassword) {
       return {
-        errors: {
-          field: "password",
-          message: "incorrect password"
-        }
-      }
+        error: [
+          {
+            field: "password",
+            message: "incorrect password"
+          }
+        ]
+      };
     }
 
     return {
       user: loginUser
-    }
+    };
   }
 }
