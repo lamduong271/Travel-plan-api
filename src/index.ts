@@ -10,6 +10,10 @@ import { ___prod___ } from "./constant";
 // import { Plan } from "./entities/Plan";
 import microConfig from './mikro-orm.config'
 import { UserResolver } from "./resolvers/UserResolver";
+import redis from 'redis'
+import session from 'express-session'
+import connectRedis from 'connect-redis'
+import { MyContext } from "./types";
 
   const main = async () => {
     const orm = await MikroORM.init(microConfig);
@@ -28,12 +32,34 @@ import { UserResolver } from "./resolvers/UserResolver";
     const app = express();
     //Apollo server
 
+    //Session save, session run before apollo middleware
+    const RedisStore = connectRedis(session)
+    let redisClient = redis.createClient()
+
+    app.use(
+      session({
+        name: 'qid',
+        store: new RedisStore({
+          client: redisClient,
+          disableTouch: true, // keep the session forever
+        }), // telling express that we using redis
+        cookie: {
+          maxAge: 1000 * 60 * 60 * 24,
+          httpOnly: true, // security reason, frontend code can not access
+          secure: ___prod___, // cookie only work in https
+          sameSite: 'lax', // csrf
+        },
+        secret: 'keyboard cat',
+        resave: false,
+      })
+    )
     const apolloServer = new ApolloServer({
     schema: await buildSchema({
       resolvers: [PlanResolver, HelloWorldResolver, UserResolver ],
       validate: true
     }),
-    context: ({ em: orm.em })
+    // access session inside resolver
+    context: ({ req, res }): MyContext => ({ em: orm.em, req, res })
   });
 
   apolloServer.applyMiddleware({ app, cors: false });
