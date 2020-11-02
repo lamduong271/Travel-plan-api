@@ -61,6 +61,18 @@ export class UserResolver {
     return "hi!";
   }
 
+  @Query(() => User, { nullable: true })
+  async loginMe(
+    @Ctx() { req, em }: MyContext
+  ) {
+    if (!req.session.userId) {
+      return null
+    }
+
+    const loginUser = await em.findOne(User, { id: req.session.userId})
+    return loginUser
+  }
+
   @Mutation(() => UserResponse)
   async registerUser(
     @Arg("data", () => UsernamePasswordInput) data: UsernamePasswordInput,
@@ -124,7 +136,7 @@ export class UserResolver {
   @Mutation(() => UserResponse)
   async login(
     @Arg("data", () => LoginInput) data: LoginInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { em, req }: MyContext
   ) {
     const loginUser = await em.findOne(User, { username: data.username });
     if (!loginUser) {
@@ -151,7 +163,7 @@ export class UserResolver {
         ]
       };
     }
-
+    req.session!.userId = loginUser.id
     return {
       user: loginUser
     };

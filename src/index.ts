@@ -34,7 +34,7 @@ import { MyContext } from "./types";
 
     //Session save, session run before apollo middleware
     const RedisStore = connectRedis(session)
-    let redisClient = redis.createClient()
+    const redisClient = redis.createClient()
 
     app.use(
       session({
@@ -49,6 +49,7 @@ import { MyContext } from "./types";
           secure: ___prod___, // cookie only work in https
           sameSite: 'lax', // csrf
         },
+        saveUninitialized: false,
         secret: 'keyboard cat',
         resave: false,
       })
