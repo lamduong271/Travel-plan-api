@@ -76,7 +76,7 @@ export class UserResolver {
   @Mutation(() => UserResponse)
   async registerUser(
     @Arg("data", () => UsernamePasswordInput) data: UsernamePasswordInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { req, em }: MyContext
   ): Promise<UserResponse> {
     // const existUser = await em.findOne(User, { username: data.username })
     // if(existUser) {
@@ -128,6 +128,9 @@ export class UserResolver {
         };
       }
     }
+
+    //login user -> session
+    req.session.userId = newUser.id
     return {
       user: newUser
     };
