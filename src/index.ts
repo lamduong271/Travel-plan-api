@@ -35,7 +35,13 @@ import { MyContext } from "./types";
     //Session save, session run before apollo middleware
     const RedisStore = connectRedis(session)
     const redisClient = redis.createClient()
-
+    const cors = require('cors');
+    app.use(
+      cors({
+        origin: 'http://localhost:3000',
+        credentials: true,
+      })
+    );
     app.use(
       session({
         name: 'qid',
@@ -63,7 +69,10 @@ import { MyContext } from "./types";
     context: ({ req, res }): MyContext => ({ em: orm.em, req, res })
   });
 
-  apolloServer.applyMiddleware({ app, cors: false });
+  apolloServer.applyMiddleware({
+    app,
+    cors: false
+  });
 
     const port = process.env.PORT || 4000;
     app.listen(port, () => {

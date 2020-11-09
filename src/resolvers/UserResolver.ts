@@ -129,7 +129,7 @@ export class UserResolver {
       }
     }
 
-    //login user -> session
+    //register user -> set a cookie on user and keep them logged in
     req.session.userId = newUser.id
     return {
       user: newUser
