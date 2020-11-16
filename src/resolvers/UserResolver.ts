@@ -177,4 +177,53 @@ export class UserResolver {
     );
     return true;
   }
+
+  @Mutation(() => UserResponse)
+  async changePassword(
+    @Arg("token") token: string,
+    @Arg("newPassword") newPassword: string,
+    @Ctx() { req, em, redis }: MyContext
+  ): Promise<UserResponse> {
+    if (newPassword.length <= 2) {
+      return {
+        errors: [
+          {
+            field: "newPassword",
+            message: "new password 's length must be more than 2"
+          }
+        ]
+      };
+    }
+    const userId = await redis.get(FORGET_PASSWORD_PREFIX + token); // got the user's id
+    if (!userId) {
+      return {
+        errors: [
+          {
+            field: "token",
+            message: "token expired"
+          }
+        ]
+      };
+    }
+
+    const updatingUser =  await em.findOne(User, { id: parseInt(userId)})
+    if (!updatingUser) {
+      return {
+        errors: [
+          {
+            field: "token",
+            message: "user no longer exists"
+          }
+        ]
+      };
+    }
+
+    updatingUser.password = await argon2.hash(newPassword);
+    await em.persistAndFlush(updatingUser)
+    // login user after changing password
+    req.session.userId = updatingUser.id
+    return { user: updatingUser}
+  }
+
+
 }
