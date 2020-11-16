@@ -6,11 +6,11 @@ import { buildSchema } from "type-graphql";
 import { HelloWorldResolver } from "./resolvers/HelloWorldResolver";
 import { PlanResolver } from "./resolvers/PlanResolver";
 import { MikroORM } from '@mikro-orm/core'
-import { ___prod___ } from "./constant";
+import { ___prod___, COOKIE_NAME } from "./constant";
 // import { Plan } from "./entities/Plan";
 import microConfig from './mikro-orm.config'
 import { UserResolver } from "./resolvers/UserResolver";
-import redis from 'redis'
+import Redis from 'ioredis'
 import session from 'express-session'
 import connectRedis from 'connect-redis'
 import { MyContext } from "./types";
@@ -34,7 +34,7 @@ import { MyContext } from "./types";
 
     //Session save, session run before apollo middleware
     const RedisStore = connectRedis(session)
-    const redisClient = redis.createClient()
+    const redis = new Redis();
     const cors = require('cors');
     app.use(
       cors({
@@ -44,9 +44,9 @@ import { MyContext } from "./types";
     );
     app.use(
       session({
-        name: 'qid',
+        name: COOKIE_NAME,
         store: new RedisStore({
-          client: redisClient,
+          client: redis,
           disableTouch: true, // keep the session forever
         }), // telling express that we using redis
         cookie: {
@@ -66,7 +66,7 @@ import { MyContext } from "./types";
       validate: true
     }),
     // access session inside resolver
-    context: ({ req, res }): MyContext => ({ em: orm.em, req, res })
+    context: ({ req, res }): MyContext => ({ em: orm.em, req, res, redis })
   });
 
   apolloServer.applyMiddleware({

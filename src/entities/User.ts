@@ -24,6 +24,10 @@ export class User {
   @Property({ type: 'text'})
   password!: string
 
+  @Field()
+  @Property({ type: 'text', unique: true, nullable: true})
+  email!: string
+
   @Field(() => String)
   @Property({ type: 'date' })
   createdAt = new Date();
