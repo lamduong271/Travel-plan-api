@@ -55,6 +55,7 @@ export class UserResolver {
     if (!req.session.userId) {
       return null;
     }
+    console.log("req.session ", req.session)
 
     const loginUser = await em.findOne(User, { id: req.session.userId });
     return loginUser;
@@ -194,7 +195,8 @@ export class UserResolver {
         ]
       };
     }
-    const userId = await redis.get(FORGET_PASSWORD_PREFIX + token); // got the user's id
+    const key = FORGET_PASSWORD_PREFIX + token;
+    const userId = await redis.get(key); // got the user's id
     if (!userId) {
       return {
         errors: [
@@ -220,6 +222,7 @@ export class UserResolver {
 
     updatingUser.password = await argon2.hash(newPassword);
     await em.persistAndFlush(updatingUser)
+    await redis.del(key) // delete token
     // login user after changing password
     req.session.userId = updatingUser.id
     return { user: updatingUser}

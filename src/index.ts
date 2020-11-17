@@ -13,7 +13,6 @@ import { UserResolver } from "./resolvers/UserResolver";
 import Redis from 'ioredis'
 import session from 'express-session'
 import connectRedis from 'connect-redis'
-import { MyContext } from "./types";
 
   const main = async () => {
     const orm = await MikroORM.init(microConfig);
@@ -61,13 +60,13 @@ import { MyContext } from "./types";
       })
     )
     const apolloServer = new ApolloServer({
-    schema: await buildSchema({
-      resolvers: [PlanResolver, HelloWorldResolver, UserResolver ],
-      validate: true
-    }),
-    // access session inside resolver
-    context: ({ req, res }): MyContext => ({ em: orm.em, req, res, redis })
-  });
+      schema: await buildSchema({
+        resolvers: [PlanResolver, HelloWorldResolver, UserResolver ],
+        validate: false
+      }),
+      // access session inside resolver
+      context: ({ req, res }) => ({ em: orm.em, req, res, redis })
+    });
 
   apolloServer.applyMiddleware({
     app,
