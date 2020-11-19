@@ -11,10 +11,6 @@
     "typescript": "3.7.2"
   },
   "dependencies": {
-    "@mikro-orm/cli": "^4.2.1",
-    "@mikro-orm/core": "^4.2.1",
-    "@mikro-orm/migrations": "^4.2.1",
-    "@mikro-orm/postgresql": "^4.2.1",
     "@types/connect-redis": "^0.0.14",
     "@types/express-session": "^1.17.0",
     "@types/ioredis": "^4.17.8",
@@ -34,15 +30,8 @@
     "sequelize": "^6.3.5",
     "sqlite3": "^4.1.0",
     "type-graphql": "^0.17.5",
-    "typeorm": "0.2.20",
+    "typeorm": "^0.2.29",
     "uuid": "^8.3.1"
-  },
-  "mikro-orm": {
-    "useTsNode": true,
-    "configPaths": [
-      "./src/mikro-orm.config.ts",
-      "./dist/mikro-orm.config.js"
-    ]
   },
   "scripts": {
     "dev": "nodemon dist/index.js",
@@ -50,7 +39,6 @@
     "dev2": "nodemon --exec ts-node src/index.ts",
     "start2": "ts-node src/index.ts",
     "build": "tsc",
-    "watch": "tsc -w",
-    "create:migration": "mikro-orm migration:create"
+    "watch": "tsc -w"
   }
 }

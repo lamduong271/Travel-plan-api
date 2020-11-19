@@ -15,6 +15,7 @@ import { UsernamePasswordInput } from "./UsernamePasswordInput";
 import { validateRegister } from "../untils/validateRegister";
 import { sendEmail } from "../untils/sendEmail";
 import { v4 } from "uuid"; // random string from uuid
+import { getConnection } from "typeorm";
 
 // @InputType()
 // class LoginInput {
@@ -51,37 +52,43 @@ export class UserResolver {
   }
 
   @Query(() => User, { nullable: true })
-  async loginMe(@Ctx() { req, em }: MyContext) {
+  aloginMe(@Ctx() { req }: MyContext) {
     if (!req.session.userId) {
       return null;
     }
-    console.log("req.session ", req.session)
+    console.log("req.session ", req.session);
 
-    const loginUser = await em.findOne(User, { id: req.session.userId });
-    return loginUser;
+    return User.findOne(req.session.userId);
   }
 
   @Mutation(() => UserResponse)
   async registerUser(
     @Arg("data", () => UsernamePasswordInput) data: UsernamePasswordInput,
-    @Ctx() { req, em }: MyContext
+    @Ctx() { req }: MyContext
   ): Promise<UserResponse> {
     const errors = validateRegister(data);
     if (errors) {
       return { errors };
     }
-
+    let newUser;
     const hashedPassword = await argon2.hash(data.password);
-    const newUser = em.create(User, {
-      username: data.username,
-      password: hashedPassword,
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName
-    });
     try {
-      await em.persistAndFlush(newUser);
+      const result = await getConnection()
+        .createQueryBuilder()
+        .insert()
+        .into(User)
+        .values({
+          username: data.username,
+          password: hashedPassword,
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName
+        })
+        .returning("*")
+        .execute();
+      newUser = result.raw[0];
     } catch (err) {
+      console.log(err);
       if (err.code === "23505") {
         return {
           errors: [
@@ -106,13 +113,12 @@ export class UserResolver {
     // @Arg("data", () => LoginInput) data: LoginInput,
     @Arg("usernameOrEmail") usernameOrEmail: string,
     @Arg("password") password: string,
-    @Ctx() { em, req }: MyContext
+    @Ctx() { req }: MyContext
   ) {
-    const loginUser = await em.findOne(
-      User,
+    const loginUser = await User.findOne(
       usernameOrEmail.includes("@")
-        ? { email: usernameOrEmail }
-        : { username: usernameOrEmail }
+        ? { where: { email: usernameOrEmail } }
+        : { where: { username: usernameOrEmail } }
     );
     if (!loginUser) {
       return {
@@ -159,9 +165,9 @@ export class UserResolver {
   @Mutation(() => Boolean)
   async forgotPassword(
     @Arg("email") email: string,
-    @Ctx() { em, redis }: MyContext
+    @Ctx() { redis }: MyContext
   ) {
-    const findUserByEmail = await em.findOne(User, { email });
+    const findUserByEmail = await User.findOne({ where: { email } });
     if (!findUserByEmail) {
       return true;
     }
@@ -183,7 +189,7 @@ export class UserResolver {
   async changePassword(
     @Arg("token") token: string,
     @Arg("newPassword") newPassword: string,
-    @Ctx() { req, em, redis }: MyContext
+    @Ctx() { req, redis }: MyContext
   ): Promise<UserResponse> {
     if (newPassword.length <= 2) {
       return {
@@ -208,7 +214,7 @@ export class UserResolver {
       };
     }
 
-    const updatingUser =  await em.findOne(User, { id: parseInt(userId)})
+    const updatingUser = await User.findOne({ id: parseInt(userId) });
     if (!updatingUser) {
       return {
         errors: [
@@ -220,13 +226,13 @@ export class UserResolver {
       };
     }
 
-    updatingUser.password = await argon2.hash(newPassword);
-    await em.persistAndFlush(updatingUser)
-    await redis.del(key) // delete token
+    await User.update(
+      { id: parseInt(userId) },
+      { password: await argon2.hash(newPassword) }
+    );
+    await redis.del(key); // delete token
     // login user after changing password
-    req.session.userId = updatingUser.id
-    return { user: updatingUser}
+    req.session.userId = updatingUser.id;
+    return { user: updatingUser };
   }
-
-
 }

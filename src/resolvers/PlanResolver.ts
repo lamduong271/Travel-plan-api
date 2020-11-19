@@ -1,78 +1,41 @@
-import { Resolver, Query, Ctx, Arg, Int, Mutation } from "type-graphql";
+import { Resolver, Query, Ctx, Arg, Int, Mutation, UseMiddleware, InputType, Field } from "type-graphql";
 import { Plan } from "../entities/Plan";
 import { MyContext } from "src/types";
-import { emit } from "cluster";
+import { isAuth } from "../database/middleware/isAuth";
 
-// @InputType()
-// class PlanInputType {
-//   @Field()
-//   destination: string
+@InputType()
+class PlanInputType {
+  @Field()
+  destination: string
 
-//   @Field(() => Int)
-//   numberOfDay: number
-// }
+  @Field(() => Int)
+  numberOfDay: number
+}
 
-// @InputType()
-// class PlanInputUpdateType {
-//   @Field(() => String, { nullable: true })
-//   destination?: string
-
-//   @Field(() => Int, { nullable: true })
-//   numberOfDay?: number
-// }
 
 @Resolver()
 export class PlanResolver {
-  // @Mutation(() => Plan)
-  // async createPlan(
-  //   @Arg('planParams', () => PlanInputType) planParams: PlanInputType,
-  // ) {
-  //   const plan = await Plan.create(planParams).save()
-  //   return plan
-  // }
-
-  // @Mutation(()=> Plan)
-  // async updatePlan(
-  //   @Arg('id') id: number,
-  //   @Arg('newParam', () => PlanInputUpdateType) newParams: PlanInputUpdateType
-  // ) {
-  //   await Plan.update({ id }, newParams)
-  //   return Plan.findOne({id})
-  // }
-
-  // @Mutation(() => Plan)
-  // async deletePlan(
-  //   @Arg('id', () => Int) id: number
-  // ) {
-  //   await Plan.delete({id})
-  //   return true
-  // }
-
   @Query(() => [Plan])
-  getAllPlans(
-    //context
-    @Ctx() { em }: MyContext
-  ): Promise<Plan[]> {
-    return em.find(Plan, {});
+  getAllPlans(): Promise<Plan[]> {
+    return Plan.find()
   }
 
   @Query(() => Plan)
   getPlanById (
-    @Ctx() { em }: MyContext,
     @Arg('plan_id', () => Int ) plan_id: number,
-  ): Promise<Plan | null> {
-    return em.findOne(Plan, { plan_id });
+  ): Promise<Plan | undefined> {
+    return Plan.findOne(plan_id);
   }
 
   @Mutation(() => Plan)
   async createPlan(
-    @Ctx() { em }: MyContext,
-    @Arg('destination', () => String) destination: string,
-    @Arg('numberOfDay', () => Int) numberOfDay: number,
-  ) {
-    const newPlan = em.create(Plan, { destination, numberOfDay})
-    await em.persistAndFlush(newPlan)
-    return newPlan
+    @Arg('planData') planData: PlanInputType,
+    @Ctx() { req }: MyContext
+  ):Promise<Plan> {
+    return Plan.create({
+      ...planData,
+      plannerId: req.session.userId,
+    }).save();
   }
 
   @Mutation(() => Plan, { nullable: true })
@@ -80,29 +43,27 @@ export class PlanResolver {
     @Arg('plan_id', () => Int ) plan_id: number,
     @Arg('destination', () => String, { nullable: true }) destination: string,
     @Arg('numberOfDay', () => Int, { nullable: true }) numberOfDay: number,
-    @Ctx() { em }: MyContext,
   ): Promise<Plan | null> {
-    const plan = await em.findOne(Plan, { plan_id })
-    if(!plan) {
+    const updatedPlan = await Plan.findOne(plan_id)
+    if(!updatedPlan) {
       return null
     }
-    plan.destination = destination || plan.destination
-    plan.numberOfDay = numberOfDay || plan.numberOfDay
-    await em.persistAndFlush(plan)
-    return plan
+    updatedPlan.destination = destination || updatedPlan.destination
+    updatedPlan.numberOfDay = numberOfDay || updatedPlan.numberOfDay
+    await Plan.update({plan_id}, updatedPlan)
+    return updatedPlan
   }
 
   @Mutation(() => Boolean)
   async deletePlan(
     @Arg('plan_id', () => Int) plan_id: number,
-    @Ctx() { em }: MyContext,
   ): Promise<boolean> {
-    const plan = await em.findOne(Plan, { plan_id})
+    const plan = await Plan.findOne(plan_id)
     if (!plan) {
       return false
     }
     try {
-      await em.nativeDelete(Plan, { plan_id})
+      await Plan.delete(plan_id)
     } catch {
       return false
     }
