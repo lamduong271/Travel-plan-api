@@ -9,20 +9,28 @@ export class Plan extends BaseEntity  {
   @PrimaryGeneratedColumn()
   plan_id!: number;
 
-  @Field(() => String)
-  @Column()
+  @Field(() => String, { nullable: false })
+  @Column({nullable: false})
   destination!: string;
 
-  @Field(() => Int)
+  @Field()
   @Column()
   numberOfDay!: number;
 
   @Field()
+  @Column({ type: 'int', default: 0})
+  voteUp!: number
+
+  @Field()
+  @Column({ type: 'int', default: 0})
+  voteDown!: number
+
+  @Field()
   @Column()
-  plannerId: number
+  plannerId!: number
 
   @ManyToOne(() => User, user => user.plans)
-  planner: User;
+  planner!: User;
 
   @Field(() => String)
   @CreateDateColumn()

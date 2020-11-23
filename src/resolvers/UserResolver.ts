@@ -52,7 +52,7 @@ export class UserResolver {
   }
 
   @Query(() => User, { nullable: true })
-  aloginMe(@Ctx() { req }: MyContext) {
+  loginMe(@Ctx() { req }: MyContext) {
     if (!req.session.userId) {
       return null;
     }
