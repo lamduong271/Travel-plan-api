@@ -7,7 +7,7 @@ import { User } from "./User";
 export class Plan extends BaseEntity  {
   @Field(() => Int)
   @PrimaryGeneratedColumn()
-  plan_id!: number;
+  id!: number;
 
   @Field(() => String, { nullable: false })
   @Column({nullable: false})
