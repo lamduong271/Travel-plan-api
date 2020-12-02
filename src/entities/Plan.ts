@@ -1,5 +1,6 @@
 import { Field, Int, ObjectType } from "type-graphql";
-import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { BaseEntity, Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Updoot } from "./Updoot";
 import { User } from "./User";
 
 @ObjectType()
@@ -29,8 +30,12 @@ export class Plan extends BaseEntity  {
   @Column()
   plannerId!: number
 
+  @Field()
   @ManyToOne(() => User, user => user.plans)
   planner!: User;
+
+  @OneToMany(() => Updoot, updoot => updoot.plan)
+  updoots: Updoot[];
 
   @Field(() => String)
   @CreateDateColumn()

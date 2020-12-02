@@ -13,6 +13,7 @@ import session from "express-session";
 import connectRedis from "connect-redis";
 import { Plan } from "./entities/Plan";
 import { User } from "./entities/User";
+import { Updoot } from "./entities/Updoot";
 const main = async () => {
   const options = await getConnectionOptions(
     process.env.NODE_ENV || "development"
@@ -24,7 +25,7 @@ const main = async () => {
     password: "lamduong271",
     logging: true,
     synchronize: true,
-    entities: [Plan, User],
+    entities: [Plan, User, Updoot],
   });
   // const plan = orm.em.create(Plan, { destination: 'Espoo', numberOfDay: 2})
   // // insert plan to database

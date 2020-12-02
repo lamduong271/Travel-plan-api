@@ -5,7 +5,9 @@ import {
   Arg,
   Field,
   Ctx,
-  ObjectType
+  ObjectType,
+  FieldResolver,
+  Root
 } from "type-graphql";
 import { MyContext } from "src/types";
 import argon2 from "argon2";
@@ -44,11 +46,15 @@ class UserResponse {
   user?: User;
 }
 
-@Resolver()
+@Resolver(User)
 export class UserResolver {
-  @Query(() => String)
-  hello() {
-    return "hi!";
+  @FieldResolver(() => String)
+  email(@Root() user: User, @Ctx() {req}: MyContext) {
+    //this is the current user so it's ok to show them their email
+    if(req.session.userId === user.id) {
+      return user.email
+    }
+    return ''
   }
 
   @Query(() => User, { nullable: true })
