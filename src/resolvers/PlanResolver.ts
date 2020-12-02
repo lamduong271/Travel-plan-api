@@ -15,6 +15,7 @@ import { MyContext } from "src/types";
 import { isAuth } from "../database/middleware/isAuth";
 import { getConnection } from "typeorm";
 import { Updoot } from "../entities/Updoot";
+import session from "express-session";
 
 @ObjectType()
 class PaginatedPlans {
@@ -39,7 +40,8 @@ export class PlanResolver {
   @Query(() => PaginatedPlans)
   async getAllPlans(
     @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null // cursor is to set results where there is some condition
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null, // cursor is to set results where there is some condition
+    @Ctx() { req }: MyContext
   ): Promise<PaginatedPlans> {
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1;
@@ -47,6 +49,11 @@ export class PlanResolver {
     //if we have more than 11 => more plans to show, less than 11, then no more to show
 
     const replacements : any[] = [realLimitPlusOne]
+    let cursorIndex = 3
+    if(req.session.userId) {
+      replacements.push(req.session.userId)
+      cursorIndex = replacements.length + 1
+    }
     if(cursor) {
       replacements.push(new Date(parseInt(cursor)))
     }
@@ -57,16 +64,20 @@ export class PlanResolver {
           'username', u.username,
           'id', u.id,
           'email', u.email
-        ) planner
+        ) planner,
+        ${
+          req.session.userId
+          ? '(select value from updoot where "voterId" = $2 and "planId" = p.id) "voteStatus"'
+          : 'null as "voteStatus"'
+        }
         from plan p
         inner join public.user u on u.id = p."plannerId"
-        ${cursor ? `where p."createdAt" < $2`: ''}
+        ${cursor ? `where p."createdAt" < $${cursorIndex}`: ''}
         order by p."createdAt" DESC
         limit $1
       `,
       replacements
     )
-    console.log("plannnn ", allPlans)
 
     // const queryBuilder = getConnection()
     //   .getRepository(Plan)
@@ -157,19 +168,53 @@ export class PlanResolver {
     //   planId,
     //   value: realValue,
     // })
-    await getConnection().query(
-      `
-      START TRANSACTION;
 
-      INSERT INTO updoot("voterId", "planId", "value") VALUES (${voterId}, ${planId}, ${realValue});
+    const updoot = await Updoot.findOne({ where: { planId, voterId }})
+    console.log("UPDOOT ", updoot)
+    // the user has voted on the plan already, and they wanna change their vote
+    console.log("realValue ", realValue, updoot?.value)
+    if(updoot && updoot.value !== realValue) {
 
-      update plan
-      set "voteUp" = "voteUp" + ${realValue}
-      where id = ${planId};
+      console.log("UPDATEE BEFORE")
+      await getConnection().transaction(async (tm) => {
+        await tm.query (
+          `
+          update updoot
+          set value = $1
+          where "planId" = $2 and "voterId" = $3
+          `,
+          [realValue, planId, voterId]
+        );
+        await tm.query(
+          `
+            update plan
+            set "voteUp" = "voteUp" + $1
+            where id = $2
+          `,
+          [2 * realValue, planId]
+        ) // vote is 1, change to -1 need 2 * -1
+      })
 
-      COMMIT;
-      `
-    )
+    } else if(!updoot) {
+      console.log("NEVERVOTE BEFORE")
+      // never voted before
+      await getConnection().transaction(async (tm) => {
+        await tm.query (
+          `
+          INSERT INTO updoot("voterId", "planId", value) VALUES ($1, $2, $3);
+          `,
+          [voterId, planId, realValue]
+        );
+        await tm.query(
+          `
+            update plan
+            set "voteUp" = "voteUp" + $1
+            where id = $2
+          `,
+          [realValue, planId]
+        )
+      })
+    }
     return true
   }
 }

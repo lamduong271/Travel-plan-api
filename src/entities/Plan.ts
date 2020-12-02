@@ -26,6 +26,9 @@ export class Plan extends BaseEntity  {
   @Column({ type: 'int', default: 0})
   voteDown!: number
 
+  @Field(() => Int, { nullable: true })
+  voteStatus: number | null; // 1 -1 or null
+
   @Field()
   @Column()
   plannerId!: number
