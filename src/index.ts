@@ -21,8 +21,8 @@ const main = async () => {
   const connect = await createConnection({
     type: "postgres",
     database: "travel_plan_database",
-    username: "postgres",
-    password: "lamduong271",
+    username: "",
+    password: "",
     logging: true,
     synchronize: true,
     entities: [Plan, User, Updoot],
